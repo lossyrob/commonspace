@@ -88,21 +88,11 @@ var travelTimes = (function() {
                         map.removeLayer(vectorLayer);
                         vectorLayer = null; 
                     }
-//                    if(data.extent) {
-                        //extent = data.extent;
-                        //url = data.;
-                      if(data.token) {
-                          token = data.token
-//                        mapLayer = new L.ImageOverlay(url, extent);
+
+                    if(data.token) {
+                        token = data.token
                         mapLayer = new L.TileLayer.WMS("gt/travelshed/wms", {
                             token: token,
-                            // lat: startMarker.getLat(),
-                            // lng: startMarker.getLng(),
-                            // time: time,
-                            // duration: duration,
-                            // format: 'image/png',
-                            // transparent: true,
-                            colorRamp: colorRamps.getColorRamp(),
                             attribution: 'Azavea'
                         })
 
@@ -110,13 +100,20 @@ var travelTimes = (function() {
                         mapLayer.setOpacity(opacity);
                         mapLayer.addTo(map);
                         map.lc.addOverlay(mapLayer, "Travel Times");
+
                         $.ajax({
-                          url: 'gt/travelshed/json',
-                          data: { token: token },
-                          success: function(data) {
-                            vectorLayer = L.geoJson().addTo(map);
-                            vectorLayer.addData(data); 
-                          }
+                            url: 'gt/travelshed/json',
+                            data: { token: token },
+                            success: function(data) {
+                                if (vectorLayer) {
+                                    map.lc.removeLayer(vectorLayer);
+                                    map.removeLayer(vectorLayer);
+                                    vectorLayer = null; 
+                                }
+
+                                vectorLayer = L.geoJson().addTo(map);
+                                vectorLayer.addData(data); 
+                            }
                         })
                         
                     }
