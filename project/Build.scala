@@ -47,8 +47,9 @@ object GeotrellisTransitBuild extends Build {
       javaOptions in (Compile,run) ++= Seq("-Xmx10G"),
 
       libraryDependencies ++= Seq(
-        "com.azavea.geotrellis" %% "geotrellis-jetty" % "0.9.0",
-        "com.azavea.geotrellis" %% "geotrellis-geotools" % "0.9.0",
+        "com.azavea.geotrellis" %% "geotrellis-raster" % "0.10.0-SNAPSHOT",
+        "com.azavea" %% "gtfs-parser" % "0.1-SNAPSHOT",
+        "com.github.nscala-time" %% "nscala-time" % "1.4.0",
         "com.typesafe" % "config" % "1.0.2",
         "org.spire-math" %% "spire" % "0.3.0",
         "org.scalatest" %% "scalatest" % "2.0.M5b" % "test",

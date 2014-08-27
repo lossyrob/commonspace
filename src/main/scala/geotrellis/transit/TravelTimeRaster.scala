@@ -2,19 +2,19 @@ package geotrellis.transit
 
 import geotrellis.transit._
 
-import geotrellis._
 import geotrellis.raster._
+import geotrellis.vector._
 
-import spire.syntax._
+import spire.syntax.cfor._
 
 object TravelTimeRaster {
-  def apply(re: RasterExtent, llRe: RasterExtent, tti: SptInfo,ldelta:Double):Raster = {
-    val ldelta2 = ldelta*ldelta
+  def apply(re: RasterExtent, llRe: RasterExtent, tti: SptInfo, ldelta: Double): Tile = {
+    val ldelta2 = ldelta * ldelta
     val SptInfo(spt, duration, Some(ReachableVertices(subindex, extent))) = tti
 
     val cols = re.cols
     val rows = re.rows
-    val data = RasterData.emptyByType(TypeInt, cols, rows)
+    val tile = ArrayTile.empty(TypeInt, cols, rows)
     val maxDuration = duration - 600
 
     cfor(0)(_ < cols, _ + 1) { col =>
@@ -46,14 +46,14 @@ object TravelTimeRaster {
           }
           val mean = s / ws
           if (c == 0 || mean.toInt > maxDuration) {
-            data.set(col, row, NODATA)
+            tile.set(col, row, NODATA)
           } else {
-            data.set(col, row, mean.toInt)
+            tile.set(col, row, mean.toInt)
           }
         }
       }
     }
 
-    Raster(data, re)
+    tile
   }
 }

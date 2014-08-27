@@ -1,6 +1,8 @@
 package geotrellis.transit
 
-import geotrellis._
+import geotrellis.raster._
+import geotrellis.vector._
+
 import geotrellis.transit.loader.Loader
 import geotrellis.transit.loader.GraphFileSet
 import geotrellis.transit.loader.gtfs.GtfsFiles
@@ -8,11 +10,9 @@ import geotrellis.transit.loader.osm.OsmFileSet
 import geotrellis.network._
 import geotrellis.network.graph._
 
-import spire.syntax._
+import spire.syntax.cfor._
 
 import scala.collection.mutable
-
-import geotrellis.jetty.WebRunner
 
 import java.io._
 
@@ -43,8 +43,8 @@ object Main {
         case "buildgraph" =>
           val configPath = args(1)
           () => buildGraph(configPath)
-        case "server" =>
-          inContext(() => mainServer(args))
+        // case "server" =>
+        //   inContext(() => mainServer(args))
         case "info" =>
           inContext(() => graphInfo())
         case "debug" =>
@@ -66,8 +66,8 @@ object Main {
     Loader.buildGraph(config.graph,config.loader.fileSets)
   }
 
-  def mainServer(args:Array[String]) =
-    WebRunner.run()
+  // def mainServer(args:Array[String]) =
+  //   WebRunner.run()
 
   def graphInfo() = {
     val graph = _context.graph
