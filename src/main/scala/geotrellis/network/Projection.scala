@@ -1,6 +1,6 @@
 package geotrellis.network
 
-import geotrellis.Extent
+import geotrellis.vector.Extent
 
 object Distance {
   val radiusOfEarth = 6371010 // Meters

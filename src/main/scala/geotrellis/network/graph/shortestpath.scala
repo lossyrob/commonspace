@@ -1,11 +1,11 @@
 package geotrellis.network.graph
 
-import geotrellis._
+import geotrellis.raster._
 import geotrellis.network._
 
 import scala.collection.mutable.{ListBuffer,PriorityQueue}
 
-import spire.syntax._
+import spire.syntax.cfor._
 
 trait ShortestPathTree {
   def travelTimeTo(target:Int):Duration

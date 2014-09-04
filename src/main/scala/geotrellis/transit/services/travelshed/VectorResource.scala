@@ -6,15 +6,18 @@ import javax.ws.rs.core.Response
 import geotrellis.transit._
 import geotrellis.transit.services._
 
-import geotrellis._
-import geotrellis.source._
+import geotrellis.raster._
+import geotrellis.engine._
+import geotrellis.engine.op.local._
+import geotrellis.engine.op.global._
 import geotrellis.jetty._
-import geotrellis.feature._
-import geotrellis.feature.op._
-import geotrellis.data.geojson._
+import geotrellis.vector._
+import geotrellis.vector.json._
 
 import com.vividsolutions.jts.{geom => jts}
 import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier
+
+import spray.json.DefaultJsonProtocol._
 
 trait VectorResource extends ServiceUtil{
   @GET
@@ -39,15 +42,15 @@ trait VectorResource extends ServiceUtil{
 
     @DefaultValue("walking")
     @QueryParam("modes")  
-    modes:String,
+    modes: String,
 
     @DefaultValue("weekday")
     @QueryParam("schedule")
-    schedule:String,
+    schedule: String,
  
     @DefaultValue("departing")
     @QueryParam("direction")
-    direction:String,
+    direction: String,
 
     @DefaultValue("500")
     @QueryParam("cols") 
@@ -59,10 +62,10 @@ trait VectorResource extends ServiceUtil{
 
     @DefaultValue("0.0001")
     @QueryParam("tolerance") 
-    tolerance:Double): Response = {
+    tolerance: Double): Response = {
 
-    val durations = durationsString.split(",").map(_.toInt)
-    val maxDuration = durations.foldLeft(0)(math.max(_,_))
+    val durations = durationsString.split(", ").map(_.toInt)
+    val maxDuration = durations.foldLeft(0)(math.max(_, _))
 
     val request = 
       try{
@@ -75,52 +78,49 @@ trait VectorResource extends ServiceUtil{
           schedule,
           direction)
       } catch {
-        case e:Exception =>
+        case e: Exception =>
           return ERROR(e.getMessage)
       }
 
     val sptInfo = SptInfoCache.get(request)
 
-    val multiPolygons:ValueSource[Seq[MultiPolygon[Int]]] =
+    val multiPolygons: ValueSource[Seq[MultiPolygonFeature[Int]]] =
       sptInfo.vertices match {
         case Some(ReachableVertices(subindex, extent)) =>
           val re = RasterExtent(expandByLDelta(extent), cols, rows)
-          val r = TravelTimeRaster(re, re, sptInfo,ldelta)
+          val r = TravelTimeRaster(re, re, sptInfo, ldelta)
           (for(duration <- durations) yield {
-            RasterSource(r)
+            RasterSource(r, re.extent)
               // Set all relevant times to 1, everything else to NODATA
               .localMapIfSet { z => if(z <= duration) { 1 } else { NODATA } }
               .toVector
               // Simplify
-              .map { vectors =>
-                vectors.map { g =>
-                  g.mapGeom( TopologyPreservingSimplifier.simplify(_, tolerance))
+              .map { polygonFeatures =>
+                polygonFeatures.map { polygonFeature =>
+                  PolygonFeature(
+                    Polygon(TopologyPreservingSimplifier.simplify(polygonFeature.geom.jtsGeom, tolerance).asInstanceOf[jts.Polygon]), 
+                    polygonFeature.data
+                  )
                 }
                }
               // Map the individual Vectors into one MultiPolygon
-              .map { vectors =>
-                val geoms =
-                  vectors.map(_.geom.asInstanceOf[jts.Polygon])
-
-                val multiPolygonGeom =
-                  Feature.factory.createMultiPolygon(geoms.toArray)
-
-                MultiPolygon(multiPolygonGeom, duration)
+              .map { polygonFeatures =>
+                MultiPolygonFeature(MultiPolygon(polygonFeatures.map(_.geom)), duration)
               }
            })
           .toSeq
           .collectSources
           .converge
-        case None => ValueSource(Seq(MultiPolygon.empty(0)))
+        case None => ValueSource(Seq(MultiPolygonFeature(MultiPolygon.EMPTY, 0)))
       }
 
     val geoJson = 
-      multiPolygons.map { seq => GeoJsonWriter.createFeatureCollectionString(seq) }
+      multiPolygons.map(_.toGeoJson)
 
     geoJson.run match {
-      case process.Complete(json, h) =>
+      case Complete(json, h) =>
         OK.json(json)
-      case process.Error(message, failure) =>
+      case Error(message, failure) =>
         ERROR(message, failure)
     }
   }

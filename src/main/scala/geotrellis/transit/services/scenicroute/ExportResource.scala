@@ -3,16 +3,17 @@ package geotrellis.transit.services.scenicroute
 import geotrellis.transit._
 import geotrellis.transit.services._
 
-import geotrellis._
+import geotrellis.raster._
+import geotrellis.vector.Extent
 import geotrellis.network._
 import geotrellis.jetty._
-import geotrellis.data.arg.ArgWriter
-import geotrellis.data.geotiff
+import geotrellis.raster.io.arg.ArgWriter
+import geotrellis.raster.io.geotiff
 
 import javax.ws.rs._
 import javax.ws.rs.core
 
-import java.io.{File,FileInputStream}
+import java.io.{File, FileInputStream}
 import com.google.common.io.Files
 
 trait ExportResource extends ServiceUtil {
@@ -50,11 +51,11 @@ trait ExportResource extends ServiceUtil {
 
     @DefaultValue("walking")
     @QueryParam("modes")  
-    modes:String,
+    modes: String,
 
     @DefaultValue("weekday")
     @QueryParam("schedule")
-    schedule:String,
+    schedule: String,
 
     @QueryParam("bbox") 
     bbox: String,
@@ -69,7 +70,7 @@ trait ExportResource extends ServiceUtil {
 
     @DefaultValue("tiff")
     @QueryParam("format")
-    format:String): core.Response = {
+    format: String): core.Response = {
 
     val request =
       try {
@@ -82,7 +83,7 @@ trait ExportResource extends ServiceUtil {
           schedule,
           "departing")
       } catch {
-        case e:Exception =>
+        case e: Exception =>
           return ERROR(e.getMessage)
       }
 
@@ -114,9 +115,9 @@ trait ExportResource extends ServiceUtil {
 
     try {
       val r =
-        re.extent.intersect(expandByLDelta(extent)) match {
+        re.extent.intersection(expandByLDelta(extent)) match {
           case Some(_) =>
-            re.extent.intersect(expandByLDelta(revExtent)) match {
+            re.extent.intersection(expandByLDelta(revExtent)) match {
               case Some(_) =>
                 ScenicRoute.getRaster(re,
                   re,
@@ -125,17 +126,17 @@ trait ExportResource extends ServiceUtil {
                   ldelta,
                   minStayTime,
                   duration)
-              case None => Raster.empty(re)
+              case None => ArrayTile.empty(TypeInt, re.cols, re.rows)
             }
-          case None => Raster.empty(re)
+          case None => ArrayTile.empty(TypeInt, re.cols, re.rows)
         }
 
       val name = s"scenicroute"
 
       if(format == "arg") {
-        ArgWriter(TypeInt).write(new File(d,s"$name.arg").getAbsolutePath,r,name)
+        ArgWriter(TypeInt).write(new File(d, s"$name.arg").getAbsolutePath, r, re.extent, name)
       } else {
-        geotiff.Encoder.writePath(new File(d,s"$name.tif").getAbsolutePath,r,geotiff.Settings.int32)
+        geotiff.Encoder.writePath(new File(d, s"$name.tif").getAbsolutePath, r, re, geotiff.Settings.int32)
       }
 
       val zipFile = compressDirectory(d)

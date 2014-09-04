@@ -3,7 +3,7 @@ package geotrellis.network.graph
 import geotrellis.network._
 
 import scala.collection.mutable
-import spire.syntax._
+import spire.syntax.cfor._
 
 /**
   * Represents edges of a directed weighted graph

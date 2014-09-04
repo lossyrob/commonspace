@@ -4,7 +4,7 @@ import geotrellis.network._
 
 import scala.collection.mutable
 
-import spire.syntax._
+import spire.syntax.cfor._
 
 abstract sealed class EdgeDirection
 

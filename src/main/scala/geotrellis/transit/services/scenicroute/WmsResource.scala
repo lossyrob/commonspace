@@ -1,9 +1,13 @@
 package geotrellis.transit.services.scenicroute
 
-import geotrellis._
-import geotrellis.source._
+import geotrellis.raster._
+import geotrellis.vector.Extent
+import geotrellis.vector.reproject._
+import geotrellis.proj4._
+import geotrellis.engine._
+import geotrellis.engine.render._
 import geotrellis.jetty._
-import geotrellis.render.ColorRamps
+import geotrellis.raster.render.ColorRamps
 import geotrellis.raster.op._
 import geotrellis.network._
 
@@ -48,11 +52,11 @@ trait WmsResource extends ServiceUtil {
 
     @DefaultValue("walking")
     @QueryParam("modes")  
-    modes:String,
+    modes: String,
 
     @DefaultValue("weekday")
     @QueryParam("schedule")
-    schedule:String,
+    schedule: String,
 
     @QueryParam("bbox") 
     bbox: String,
@@ -88,7 +92,7 @@ trait WmsResource extends ServiceUtil {
           schedule,
           "departing")
       } catch {
-        case e:Exception => 
+        case e: Exception => 
           return ERROR(e.getMessage)
       }
 
@@ -106,12 +110,7 @@ trait WmsResource extends ServiceUtil {
 
     val extent = Extent.fromString(bbox)
 
-    val llExtent = {
-      // Reproject to latitude\longitude for querying spatial index.
-      val (ymin, xmin) = reproject(extent.xmin, extent.ymin)
-      val (ymax, xmax) = reproject(extent.xmax, extent.ymax)
-      Extent(xmin, ymin, xmax, ymax)
-    }
+    val llExtent = extent.reproject(WebMercator, LatLng)
 
     val re = RasterExtent(extent, cols, rows)
     val llRe = RasterExtent(llExtent, cols, rows)
@@ -131,9 +130,9 @@ trait WmsResource extends ServiceUtil {
               val cols = newRe.cols
               val rows = newRe.rows
               val raster = 
-                llRe.extent.intersect(expandByLDelta(extent)) match {
+                llRe.extent.intersection(expandByLDelta(extent)) match {
                   case Some(_) =>
-                    llRe.extent.intersect(expandByLDelta(revExtent)) match {
+                    llRe.extent.intersection(expandByLDelta(revExtent)) match {
                       case Some(_) =>
                         ScenicRoute.getRaster(newRe,
                           newllRe,
@@ -142,35 +141,35 @@ trait WmsResource extends ServiceUtil {
                           ldelta,
                           minStayTime,
                           duration)
-                      case None => Raster.empty(newRe)
+                      case None => ArrayTile.empty(TypeInt, newRe.cols, newRe.rows)
                     }
-                  case None => Raster.empty(newRe)
+                  case None => ArrayTile.empty(TypeInt, newRe.cols, newRe.rows)
                 }
 
               val colorMap = 
                 try {
-                  getColorMap(palette,breaks)
+                  getColorMap(palette, breaks)
                 } catch {
-                  case e:Exception =>
+                  case e: Exception =>
                     return ERROR(e.getMessage)
                 }
 
-              RasterSource(raster.mapIfSet(colorMap))
-                .warp(RasterExtent(raster.rasterExtent.extent, cols, rows))
+              RasterSource(raster.mapIfSet(colorMap), newllRe.extent)
+                .warp(RasterExtent(newRe.extent, cols, rows))
                 .renderPng
             case _ =>
-              RasterSource(Raster.empty(re))
+              RasterSource(ArrayTile.empty(TypeInt, re.cols, re.rows), re.extent)
                 .renderPng(ColorRamps.BlueToRed)
           }
         case _ =>
-          RasterSource(Raster.empty(re))
+          RasterSource(ArrayTile.empty(TypeInt, re.cols, re.rows), re.extent)
             .renderPng(ColorRamps.BlueToRed)
       }
 
     png.run match {
-      case process.Complete(img, h) =>
-        OK.png(img)
-      case process.Error(message, failure) =>
+      case Complete(img, h) =>
+        OK.png(img.bytes)
+      case Error(message, failure) =>
         ERROR(message, failure)
     }
   }

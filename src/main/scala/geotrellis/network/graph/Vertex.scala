@@ -2,7 +2,7 @@ package geotrellis.network.graph
 
 import geotrellis.network._
 
-import spire.syntax._
+import spire.syntax.cfor._
 
 sealed abstract class VertexType
 

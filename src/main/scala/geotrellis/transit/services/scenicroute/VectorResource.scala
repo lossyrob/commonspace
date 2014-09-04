@@ -6,16 +6,19 @@ import javax.ws.rs.core.Response
 import geotrellis.transit._
 import geotrellis.transit.services._
 
-import geotrellis._
-import geotrellis.source._
+import geotrellis.raster._
+import geotrellis.vector._
+import geotrellis.vector.json._
+import geotrellis.engine._
+import geotrellis.engine.op.local._
+import geotrellis.engine.op.global._
 import geotrellis.jetty._
-import geotrellis.feature._
-import geotrellis.feature.op._
 import geotrellis.network._
-import geotrellis.data.geojson._
 
 import com.vividsolutions.jts.{geom => jts}
 import com.vividsolutions.jts.simplify.TopologyPreservingSimplifier
+
+import spray.json.DefaultJsonProtocol._
 
 trait VectorResource extends ServiceUtil{
   @GET
@@ -99,59 +102,56 @@ trait VectorResource extends ServiceUtil{
                      !request.departing)
     val reverseSptInfo = SptInfoCache.get(reverseSptInfoRequest)
 
-    val multiPolygons:ValueSource[Seq[MultiPolygon[Int]]] =
+    val multiPolygons:ValueSource[Seq[MultiPolygonFeature[Int]]] =
       sptInfo.vertices match {
         case Some(ReachableVertices(subindex, extent)) =>
           reverseSptInfo.vertices match {
             case Some(ReachableVertices(revSubindex, revExtent)) =>
               val re = RasterExtent(expandByLDelta(extent), cols, rows)
-                (for(minStayTime <- minStayTimes) yield {
-                  val r =
-                    ScenicRoute.getRaster(re,
-                                          re,
-                                          sptInfo,
-                                          reverseSptInfo,
-                                          ldelta,
-                                          minStayTime,
-                                          duration)
-                  RasterSource(r)
-                    .localMapIfSet { z => if(z <= duration) { 1 } else { NODATA } }
-                    .toVector
-                    // Simplify
-                    .map { vectors =>
-                      vectors.map { g =>
-                        g.mapGeom( TopologyPreservingSimplifier.simplify(_, tolerance))
-                      }
-                     }
-                    // Map the individual Vectors into one MultiPolygon
-                    .map { vectors =>
-                      val geoms =
-                        vectors.map(_.geom.asInstanceOf[jts.Polygon])
+              minStayTimes.map { minStayTime =>
+                val r =
+                  ScenicRoute.getRaster(re,
+                                        re,
+                                        sptInfo,
+                                        reverseSptInfo,
+                                        ldelta,
+                                        minStayTime,
+                                        duration)
 
-                      val multiPolygonGeom =
-                        Feature.factory.createMultiPolygon(geoms.toArray)
-
-                      MultiPolygon(multiPolygonGeom, duration)
+                RasterSource(r, re.extent)
+                  .localMapIfSet { z => if(z <= duration) { 1 } else { NODATA } }
+                  .toVector
+                  // Simplify
+                  .map { polygonFeatures =>
+                    polygonFeatures.map { polygonFeature =>
+                      PolygonFeature(
+                        Polygon(TopologyPreservingSimplifier.simplify(polygonFeature.geom.jtsGeom, tolerance).asInstanceOf[jts.Polygon]),
+                        polygonFeature.data
+                      )
                     }
-                })
-                .toSeq
-                .collectSources
-                .converge
-
+                   }
+                  // Map the individual Vectors into one MultiPolygon
+                  .map { polygonFeatures =>
+                    MultiPolygonFeature(MultiPolygon(polygonFeatures.map(_.geom)), duration)
+                  }
+               }
+              .toSeq
+              .collectSources
+              .converge
             case None => 
-              ValueSource(Seq(MultiPolygon.empty(0)))
+              ValueSource(Seq(MultiPolygonFeature(MultiPolygon.EMPTY,0)))
           }
         case None => 
-          ValueSource(Seq(MultiPolygon.empty(0)))
+          ValueSource(Seq(MultiPolygonFeature(MultiPolygon.EMPTY,0)))
       }
 
     val geoJson = 
-      multiPolygons.map { seq => GeoJsonWriter.createFeatureCollectionString(seq) }
+      multiPolygons.map(_.toGeoJson)
 
     geoJson.run match {
-      case process.Complete(json, h) =>
+      case Complete(json, h) =>
         OK.json(json)
-      case process.Error(message, failure) =>
+      case Error(message, failure) =>
         ERROR(message, failure)
     }
   }

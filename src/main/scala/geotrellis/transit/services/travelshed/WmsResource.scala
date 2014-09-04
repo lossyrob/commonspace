@@ -1,9 +1,13 @@
 package geotrellis.transit.services.travelshed
 
-import geotrellis._
-import geotrellis.source._
+import geotrellis.raster._
+import geotrellis.vector.Extent
+import geotrellis.vector.reproject._
+import geotrellis.engine._
+import geotrellis.engine.render._
 import geotrellis.jetty._
-import geotrellis.render.ColorRamps
+import geotrellis.proj4._
+import geotrellis.raster.render._
 
 import geotrellis.transit._
 import geotrellis.transit.services._
@@ -23,7 +27,7 @@ trait WmsResource extends ServiceUtil {
     bbox: String,
     cols: Int,
     rows: Int,
-    resolutionFactor: Int)(colorRasterFunc:Raster=>Raster): ValueSource[Png] = {
+    resolutionFactor: Int)(colorRasterFunc: Tile => Tile): ValueSource[Png] = {
 
     val request = 
       SptInfoRequest.fromParams(
@@ -38,12 +42,7 @@ trait WmsResource extends ServiceUtil {
     val sptInfo = SptInfoCache.get(request)
 
     val extent = Extent.fromString(bbox)
-    val llExtent = {
-      // Reproject to latitude\longitude for querying spatial index.
-      val (ymin, xmin) = reproject(extent.xmin, extent.ymin)
-      val (ymax, xmax) = reproject(extent.xmax, extent.ymax)
-      Extent(xmin, ymin, xmax, ymax)
-    }
+    val llExtent = extent.reproject(WebMercator, LatLng)
 
     val re = RasterExtent(extent, cols, rows)
     val llRe = RasterExtent(llExtent, cols, rows)
@@ -60,18 +59,18 @@ trait WmsResource extends ServiceUtil {
         val rows = newRe.rows
 
         val r = 
-          llRe.extent.intersect(expandByLDelta(extent)) match {
+          llRe.extent.intersection(expandByLDelta(extent)) match {
             case Some(ie) => 
               TravelTimeRaster(newRe, newllRe, sptInfo,ldelta)
             case None => 
-              Raster.empty(newRe)
+              ArrayTile.empty(TypeInt, newRe.cols, newRe.rows)
           }
 
-        RasterSource(colorRasterFunc(r))
-          .warp(RasterExtent(r.rasterExtent.extent, cols, rows))
+        RasterSource(colorRasterFunc(r), newRe.extent)
+          .warp(RasterExtent(newRe.extent, cols, rows))
           .renderPng
       case _ =>
-        RasterSource(Raster.empty(re))
+        RasterSource(ArrayTile.empty(TypeInt, re.cols, re.rows), re.extent)
           .renderPng(ColorRamps.BlueToRed)
     }
   }
@@ -153,9 +152,9 @@ trait WmsResource extends ServiceUtil {
         resolutionFactor)(_.mapIfSet(colorMap))
 
       png.run match {
-        case process.Complete(img, h) =>
+        case Complete(img, h) =>
           OK.png(img)
-        case process.Error(message, failure) =>
+        case Error(message, failure) =>
           ERROR(message, failure)
       }
     } catch {
@@ -245,9 +244,9 @@ trait WmsResource extends ServiceUtil {
         })
 
       png.run match {
-        case process.Complete(img, h) =>
+        case Complete(img, h) =>
           OK.png(img)
-        case process.Error(message, failure) =>
+        case Error(message, failure) =>
           ERROR(message, failure)
       }
     } catch {

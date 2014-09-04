@@ -16,7 +16,6 @@ class ReachableService extends ServiceUtil {
   case class LocationInfo(lat:Double,lng:Double,vertex:Int)
   case class ReachableInfo(location:LocationInfo,duration:Duration) {
     val reachable = duration != Duration.UNREACHABLE
-    println(duration)
     def toJson() = {
       s"""{ "location": [${location.lat},${location.lng}], 
             "reachable": "$reachable", 

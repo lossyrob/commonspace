@@ -1,6 +1,7 @@
 package geotrellis.transit
 
-import geotrellis._
+import geotrellis.raster._
+import geotrellis.vector.Extent
 import geotrellis.network._
 import geotrellis.network.graph._
 

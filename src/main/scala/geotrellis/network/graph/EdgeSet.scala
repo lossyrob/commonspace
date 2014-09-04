@@ -5,7 +5,7 @@ import geotrellis.network.graph._
 
 import scala.collection.mutable
 
-import spire.syntax._
+import spire.syntax.cfor._
 
 object EdgeSet {
   def apply(vertex:Vertex) = new EdgeSet(vertex)

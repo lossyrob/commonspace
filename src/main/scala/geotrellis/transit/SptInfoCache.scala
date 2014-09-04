@@ -10,7 +10,7 @@ object SptInfoCache {
   implicit val timeout = Timeout(500 seconds)
 
   // Create cache actor
-  private val system = geotrellis.process.Server.actorSystem
+  private val system = geotrellis.engine.GeoTrellis.engine.system
   private val cacheActor = 
     system.actorOf(Props(
       classOf[CacheActor[SptInfoRequest,SptInfo]],

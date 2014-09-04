@@ -8,7 +8,7 @@ import com.vividsolutions.jts.geom.Envelope
 import scala.collection.mutable
 import scala.collection.JavaConversions._
 
-import geotrellis.Extent
+import geotrellis.vector.Extent
 
 object SpatialIndex {
   def apply(points:Iterable[(Double,Double)])

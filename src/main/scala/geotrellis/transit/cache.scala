@@ -47,7 +47,6 @@ class CacheActor[TK,TV](expireTime:Long,
   private def cleanCache() =
     for(key <- lastAccess.keys.toList) {
       if(System.currentTimeMillis - lastAccess(key) > expireTime) {
-        println(s"  REMOVING $key FROM CACHE")
         cache.remove(key)
         lastAccess.remove(key)
       }
@@ -76,7 +75,6 @@ class CacheActor[TK,TV](expireTime:Long,
     builder ! PoisonPill
     for(r <- requesters) { r ! value }
     pending.remove(key)
-    println(s" MAP SIZES: cache = ${cache.size} lastAccess = ${lastAccess.size} pending = ${pending.size}")
   }
 }
 
@@ -86,7 +84,4 @@ case class BuilderActor[TK,TV](cacheActor:ActorRef,buildFunc:TK=>TV) extends Act
       val k = key.asInstanceOf[TK]
       cacheActor ! BuildResponse(k,buildFunc(k))
   }
-
-  override
-  def postStop(): Unit = { println("DEAD BUILDERACTOR!") }
 }

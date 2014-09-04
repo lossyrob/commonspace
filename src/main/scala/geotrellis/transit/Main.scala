@@ -1,6 +1,7 @@
 package geotrellis.transit
 
-import geotrellis._
+import geotrellis.raster._
+import geotrellis.vector.Extent
 import geotrellis.transit.loader.Loader
 import geotrellis.transit.loader.GraphFileSet
 import geotrellis.transit.loader.gtfs.GtfsFiles
@@ -8,7 +9,7 @@ import geotrellis.transit.loader.osm.OsmFileSet
 import geotrellis.network._
 import geotrellis.network.graph._
 
-import spire.syntax._
+import spire.syntax.cfor._
 
 import scala.collection.mutable
 
