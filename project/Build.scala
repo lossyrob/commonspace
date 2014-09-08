@@ -49,6 +49,7 @@ object GeotrellisTransitBuild extends Build {
       libraryDependencies ++= Seq(
         "com.azavea.geotrellis" %% "geotrellis-engine" % "0.10.0-SNAPSHOT",
         "com.azavea.geotrellis" %% "geotrellis-jetty" % "0.10.0-SNAPSHOT",
+        "com.azavea"            %% "gtfs-parser" % "0.1-SNAPSHOT",
         "io.spray"        % "spray-client"  % "1.2.1",
         "io.spray"        % "spray-routing" % "1.2.1",
         "io.spray"        % "spray-httpx"   % "1.2.1",

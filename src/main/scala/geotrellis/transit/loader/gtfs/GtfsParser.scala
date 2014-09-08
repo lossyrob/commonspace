@@ -1,5 +1,6 @@
 package geotrellis.transit.loader.gtfs
 
+import geotrellis.transit.loader.gtfs.model._
 import geotrellis.transit.Logger
 import geotrellis.network.{Time,Duration,Location}
 import geotrellis.network.graph.{Vertex, MutableGraph}
@@ -25,7 +26,6 @@ object GtfsParser {
       trips.values.map(_.setEdges(stopsToVertices,files.name,g)).foldLeft(0)(_+_)
     }
     Logger.log(s"$edges edges set.")
-    val vertices = stopsToVertices.values.toSeq
     (stops,g)
   }
 
