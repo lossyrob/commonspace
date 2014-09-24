@@ -15,6 +15,9 @@ object GtfsDateParser {
 
   def parse(name: String, gtfsDirectory: String, date: LocalDate): (MutableGraph, NamedLocations) = {
     val data = GtfsData.fromFile(gtfsDirectory)
+
+    // val records = GtfsRecords.fromFiles(gtfsDirectory)
+    // val transitSystem = TransitSystemBuilder.systemBetween(date, date)
     import data.context._
 
     def getVertex(stop: Stop, stopsToVertices: mutable.Map[Stop, Vertex], graph: MutableGraph) =
